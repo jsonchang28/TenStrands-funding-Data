@@ -1,0 +1,124 @@
+---
+title: "CA_public_school_funding"
+format: pdf
+editor: visual
+---
+
+```{r}
+fund_data <- read.csv("sp26_districtlevel_funding_data.csv", , stringsAsFactors = FALSE)
+fund_data$CDS <- as.character(fund_data$CDS)   # keep full code / no rounding
+options(scipen = 999)                          # avoid scientific notation
+
+View(fund_data)
+```
+
+```{r}
+alameda_county <- subset(fund_data, County == "Alameda")
+alameda_county
+```
+
+```{r}
+palo_alto_usd <- subset(fund_data, District.Name == "Palo Alto Unified")
+palo_alto_usd
+```
+
+```{r}
+santaclara_only <- subset(fund_data, County == "Santa Clara")
+santaclara_only
+```
+
+```{r}
+sanmateo_only <- subset(fund_data, County == "San Mateo")
+sanmateo_only
+```
+
+```{r}
+la_only <- subset(fund_data, County == "Los Angeles")
+la_only
+```
+
+```{r}
+orange_only <- subset(fund_data, County == "Orange")
+orange_only
+```
+
+```{r}
+sf_only <- subset(fund_data, County == "San Francisco")
+sf_only
+```
+
+```{r}
+library(dplyr)
+
+keep_cols <- c(
+  "CDS.Code",
+  "County",
+  "District.Name",
+  "District.Type",
+  "Mean.Income.of.Population.in.District.Area",
+  "Median.Income.of.Population.in.District.Area",
+  "Grade.Levels",
+  "Student.Enrollment..2024.25.",
+  "Number.of.Schools..2024.25.",
+  "Student.to.Teacher.Ratio",
+  "County.Superintendent..CCESSA..Region",
+  "Locale.Classifications",
+  "Percent.of.Republican.Votes..2024.",
+  "Percent.of.Democratic.Votes..2024.",
+  "Expense.per.ADA..2022.23.",
+  "Funding.sources.for.sustainability.efforts.identified.in.LCAP"
+)
+
+filtered_fund_data <- fund_data %>% select(any_of(keep_cols))
+filtered_fund_data
+
+View(filtered_fund_data)
+```
+
+```{r}
+library(dplyr)
+
+# convert the $ expense column from character -> numeric
+filtered_fund_data <- filtered_fund_data %>%
+  mutate(
+    Expense.per.ADA..2022.23. = as.numeric(gsub("[$,]", "", Expense.per.ADA..2022.23.)),
+    Median.Income.of.Population.in.District.Area =
+      as.numeric(gsub("[$,]", "", Median.Income.of.Population.in.District.Area))
+  )
+
+m1 <- glm(
+  Funding.sources.for.sustainability.efforts.identified.in.LCAP ~
+    log(Expense.per.ADA..2022.23.) +
+    log(Median.Income.of.Population.in.District.Area) +
+    Student.to.Teacher.Ratio +
+    log(Student.Enrollment..2024.25.) +
+    Number.of.Schools..2024.25. +
+    Locale.Classifications +
+    District.Type,
+  data = filtered_fund_data,
+  family = binomial()
+)
+
+summary(m1)
+```
+
+
+```{r}
+lm1 <- lm(Expense.per.ADA..2022.23. ~ Median.Income.of.Population.in.District.Area,
+          data = filtered_fund_data)
+
+s <- summary(lm1)
+
+# coefficients table (intercept + slope)
+s$coefficients
+
+# R^2 and adjusted R^2
+s$r.squared
+s$adj.r.squared
+
+cat("Intercept:", coef(lm1)[1], "\n")
+cat("Slope (Median Income):", coef(lm1)[2], "\n")
+cat("R^2:", summary(lm1)$r.squared, "\n")
+cat("Adj R^2:", summary(lm1)$adj.r.squared, "\n")
+```
+
